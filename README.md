@@ -1,17 +1,16 @@
 # Android3DEngine
 Uses android built-in OpenGL ES. No external libraries required
 
-<br>
+<hr>
 
 WORK IN PROGRESS
-<hr>
-
+<br>
 TODO:
-<hr>
+<br>
    -OpenGLES context is reset upon screen rotation. Temporary fix is to set screen rotation manually and rotatable set to false.
-<hr>
+<br>
    -A more programmer-friendly toolbox
-<hr>
+<br>
    -Organization
-<hr>
+<br>
    -Physics engine implementation
