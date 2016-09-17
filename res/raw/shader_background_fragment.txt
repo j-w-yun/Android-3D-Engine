@@ -1,0 +1,89 @@
+#version 300 es
+
+in vec4 coord;
+
+out vec4 fragColor;
+
+uniform float xPos;
+uniform float yPos;
+uniform float iGlobalTime;
+uniform int width;
+uniform int height;
+
+float field(in vec3 p, float s) {
+	float strength = 7. + .03 * log(1.e-6 + fract( abs( sin(iGlobalTime)) * .0437311));
+	float accum = s / 4.;
+	float prev = 0.;
+	float tw = 0.;
+	for (int i = 0; i < 20; ++i) {
+		float mag = dot(p, p);
+		p = abs(p) / mag + vec3(-.5, -.4, -1.5);
+		float w = exp(-float(i) / 7.);
+		accum += w * exp(-strength * pow(abs(mag - prev), 3.2));
+		tw += w;
+		prev = mag;
+	}
+	return max(0., 5. * accum / tw - .7);
+}
+
+vec3 nrand3(vec2 co) {
+	vec3 a = fract( cos( mod(co.x, 9345.0) * 8.3e-3 + mod(co.y, 9345.0)) * vec3(1.3e5, 4.7e5, 2.9e5) );
+	// vec3 a = fract(cos(co.x * 8.3e-3 + co.y)) * vec3(1.3e5, 4.7e5, 2.9e5);
+	vec3 b = fract( sin( mod(co.x, 9345.0) * 0.3e-3 + mod(co.y, 9345.0)) * vec3(8.1e5, 1.0e5, 0.1e5) );
+	// vec3 b = fract(sin(co.x * 0.3e-3 + co.y)) * vec3(8.1e5, 1.0e5, 0.1e5);
+	vec3 c = mix(a, b, 0.1);
+	return c;
+}
+
+void main() {
+	vec2 iResolution = vec2(float(width), float(height));
+
+	vec2 uv = coord.xy;
+	vec2 uvs = uv * iResolution.xy / max(iResolution.x, iResolution.y);
+	vec3 p = vec3(uvs / 4., 0.) + vec3(1., -1.3, 0.);
+
+	//// Edge blur
+	//p += 0.2 * vec3(
+	//	clamp( (mod(1.0 + cos(xPos * 1000.), uv.x) / 5.), 0.08, 0.99) * clamp( (mod(1.0 + cos(xPos * 1000.), uv.x) / 5.), -0.99, -0.08) + xPos * 1000. / 10000.,
+	//	clamp( (mod(1.0 + cos(yPos * 1000.), uv.y) / 5.), 0.08, 0.99) * clamp( (mod(1.0 + cos(yPos * 1000.), uv.y) / 5.), -0.99, -0.08) + yPos * 1000. / 10000.,
+	//	20.0 * sin(iGlobalTime / 2000.));
+
+	// Ambience
+	float freqs[4];
+	freqs[0] = 0.2 * max( clamp( abs( sin(iGlobalTime / 8.)), 0.5, 4.), clamp( (abs(1.0) + abs(1.0)) / 4., 0.3, 20.0));
+	freqs[1] = 0.5 * max( clamp( abs( sin(iGlobalTime / 8.)), 0.5, 4.), clamp( (abs(1.0) + abs(1.0)) / 4., 0.3, 20.0));
+	freqs[2] = 0.7 * clamp( (abs(1.0) + abs(1.0)) / 4., 0.3, 20.0);
+	freqs[3] = 0.7 * max( clamp( abs( cos(iGlobalTime / 6.)), 0.5, 4.), clamp( (abs(1.0) + abs(1.0)) / 4., 0.3, 20.0));
+
+	float t = field(p, freqs[2]);
+	float v = (1. - exp( (abs(uv.x) - 1.) * 6.)) * (1. - exp( (abs(uv.y) - 1.) * 6.));
+
+    //Second Layer
+    // Speed pan out
+	vec3 p2 = vec3(uvs / (6. - clamp( max( pow( (abs(1.0) + abs(1.0)), 0.3) / 1.2, 1.0) - 1.0, 0.0, 0.2) + sin(iGlobalTime * 0.11) * 0.2 + 0.2 + sin(iGlobalTime * 0.15) * 0.3 + 0.4), 1.5) + vec3(2., -1.3, -1.);
+	p2 += 0.03 * vec3((xPos * 1000.), (yPos * 1000.),  sin(iGlobalTime / 12800.)); // Translation
+
+	//Third Layer
+	vec3 p3 = vec3(uvs / (6. - clamp( max( pow( (abs(1.0) + abs(1.0)), 0.3) / 1.2, 1.0) - 1.0, 0.0, 0.2) + sin(iGlobalTime * 0.11) * 0.2 + 0.2 + sin(iGlobalTime * 0.15) * 0.3 + 0.4), 1.5) + vec3(2., -1.3, -1.);
+	p3 += 0.5 * vec3((xPos * 1000.), (yPos * 1000.),  sin(iGlobalTime / 128000.));
+
+	//Let's add some stars
+	vec2 seed = p.xy * 2.0;
+	seed = floor(seed * iResolution.x);
+	vec3 rnd = nrand3(seed);
+	vec4 starcolor = vec4( pow(rnd.y, 60.0));
+
+	// Second Layer
+	vec2 seed2 = p2.xy * 2.0;
+	seed2 = floor(seed2 * iResolution.x);
+	vec3 rnd2 = nrand3(seed2 * 2.);
+	starcolor = vec4( pow(rnd2.y, 50.0));
+
+	//Third Layer
+	vec2 seed3 = p3.xy * 2.0;
+	seed3 = floor(seed3 * iResolution.x);
+	vec3 rnd3 = nrand3(seed3 * 3.);
+	starcolor += vec4( pow(rnd3.y, 60.0));
+
+	fragColor = (freqs[3]-.3, 1., v) * vec4(1.5 * freqs[2] * t * t* t , 1.2 * freqs[1] * t * t, freqs[0] * t, 1.0) + starcolor;
+}

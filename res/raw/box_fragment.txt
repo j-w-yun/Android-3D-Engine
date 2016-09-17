@@ -1,0 +1,10 @@
+#version 300 es
+
+in vec4 coord;
+
+out vec4 fragColor;
+
+void main()
+{
+	fragColor = vec4( 1.0, clamp( abs(coord.z) * 4.0, 0.2, 1.0), clamp( coord.z * 2.0, 0.2, 0.5), 1.0);
+}

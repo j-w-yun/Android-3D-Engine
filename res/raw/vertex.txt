@@ -1,0 +1,14 @@
+#version 300 es
+
+in vec4 position;
+
+out vec4 coord;
+
+uniform mat4 transform;
+
+void main()
+{
+	gl_Position =  transform * position;
+
+	coord = position;
+}
